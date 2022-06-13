@@ -984,7 +984,8 @@ def _impl(ctx):
             flag_set(
                 actions = [ACTION_NAMES.cpp_link_static_library],
                 flag_groups = [
-                    flag_group(flags = ["rcsD"]),
+                    # change from flag_group(flags = ["rcsD"]),
+                    flag_group(flags = ["-o"]),
                     flag_group(
                         flags = ["%{output_execpath}"],
                         expand_if_available = "output_execpath",
