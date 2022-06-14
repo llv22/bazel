@@ -73,7 +73,7 @@ cc_toolchain_suite(
         linker_files = ":osx_tools_" + arch,
         objcopy_files = ":empty",
         strip_files = ":osx_tools_" + arch,
-        supports_param_files = 1,
+        supports_param_files = 0,
         toolchain_config = arch,
         toolchain_identifier = arch,
     )
