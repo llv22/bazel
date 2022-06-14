@@ -5,12 +5,9 @@
 
 --------------------------------------------------------------------------------
 
-As official bazel requires libtool provided by Xcode to accept params file as arguments, such feature breaks the building of libraries on macOS 10.13.6 (Xcode 10.1) that is the basis of tensorflow on macOS with GPU supports. I identified this change occurs in the following codes
+## Motivation
 
-* [Comparing changes between 3.7.2 and 4.0.0](https://github.com/bazelbuild/bazel/compare/3.7.2...4.0.0)
-* [Add support for params files for darwin](https://github.com/bazelbuild/bazel/commit/d3fc253a49a00c34408bbaf5378376cbcea1c5c9)
-
-In order to avoid the building issue of bazel 5.2.0 mentioned below:
+As official bazel requires libtool provided by Xcode to accept params file as arguments, such feature breaks the building of libraries on macOS 10.13.6 (Xcode 10.1) that is the basis of tensorflow on macOS with GPU supports.  The building issue of bazel 5.2.0 mentioned below will unavoidly happened on the legacies system that have been on the side line of bazel's release plan.
 
 ```bash
 (base) Orlando:stage2 llv23$ bazel build //main:hello-world --verbose_failures --sandbox_debug
@@ -34,6 +31,35 @@ FAILED: Build did NOT complete successfully
 ```
 
 One patch on top of 5.2.0 has been applied for bazel, which is the main purpose of this repository.
+
+## How to adapt source code
+
+I identified this change occurs in the following codes
+
+* [Comparing changes between 3.7.2 and 4.0.0](https://github.com/bazelbuild/bazel/compare/3.7.2...4.0.0)
+* [Add support for params files for darwin](https://github.com/bazelbuild/bazel/commit/d3fc253a49a00c34408bbaf5378376cbcea1c5c9)
+* Avoid rcsD issue in tools/cpp/unix_cc_toolchain_config.bzl
+
+```bash
+                    flags = ["rcsD"] 
+                    if ctx.attr.target_libc != "macosx" else ["-o"]
+```
+
+force to change to
+
+```bash
+                    # change from flag_group(flags = ["rcsD"]),
+                    flag_group(flags = ["-o"]),
+```
+
+## Building
+
+1. add build-label.txt in repository with tagged version
+2. repackage bazel with the following command
+
+```bash
+bazel build //src:bazel-dev --embed_label=5.2.0-dev-p1-${SHA} --verbose_failures
+```
 
 --------------------------------------------------------------------------------
 
