@@ -230,11 +230,14 @@ def _cc_library_impl(ctx):
         precompiled_libraries,
     )
 
+    print("libraries_to_link for cc_library: {}".format(libraries_to_link))
+
     cc_native_library_info = cc_internal.collect_native_cc_libraries(
         deps = ctx.attr.deps,
         libraries_to_link = libraries_to_link,
     )
 
+    print("cc_native_library_info for cc_library: {}".format(cc_native_library_info))
     files_builder = []
     if linking_outputs.library_to_link != None:
         artifacts_to_build = linking_outputs.library_to_link

@@ -1519,6 +1519,7 @@ public class CppCompileAction extends AbstractAction implements IncludeScannable
     }
 
     try {
+      System.err.printf("[bazel:src/main/java/com/google/devtools/build/lib/rules/cpp/CppCompileAction.java] arguments: %s, inputs: %s, outputs: %s, os: %s, tools: %s \n", getArguments(), inputs, getOutputs(), OS.getCurrent(), NestedSetBuilder.emptySet(Order.STABLE_ORDER));
       return new SimpleSpawn(
           this,
           ImmutableList.copyOf(getArguments()),

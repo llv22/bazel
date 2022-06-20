@@ -49,6 +49,8 @@ import com.google.devtools.build.lib.analysis.config.BuildConfiguration;
 import com.google.devtools.build.lib.analysis.starlark.Args;
 import com.google.devtools.build.lib.cmdline.RepositoryName;
 import com.google.devtools.build.lib.collect.nestedset.NestedSet;
+import com.google.devtools.build.lib.collect.nestedset.NestedSetBuilder;
+import com.google.devtools.build.lib.collect.nestedset.Order;
 import com.google.devtools.build.lib.concurrent.ThreadSafety.ThreadCompatible;
 import com.google.devtools.build.lib.exec.SpawnStrategyResolver;
 import com.google.devtools.build.lib.rules.cpp.CcLinkingContext.Linkstamp;
@@ -290,6 +292,9 @@ public final class CppLinkAction extends AbstractAction implements CommandAction
   private Spawn createSpawn(ActionExecutionContext actionExecutionContext)
       throws ActionExecutionException {
     try {
+      System.err.printf("[bazel:src/main/java/com/google/devtools/build/lib/rules/cpp/CppLinkAction.java] command line: %s, inputs: %s, outputs: %s, os: %s, tools: %s \n", ImmutableList.copyOf(getCommandLine(actionExecutionContext.getArtifactExpander())), getInputs(), getOutputs(), OS.getCurrent(), estimateResourceConsumptionLocal(
+              OS.getCurrent(),
+              getLinkCommandLine().getLinkerInputArtifacts().memoizedFlattenAndGetSize()));
       return new SimpleSpawn(
           this,
           ImmutableList.copyOf(getCommandLine(actionExecutionContext.getArtifactExpander())),
