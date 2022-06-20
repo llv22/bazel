@@ -55,11 +55,11 @@ if [[ $DEV_BUILD -eq 0 ]]; then
   # While we're in the deploy jar, grab the label and pack it into the final
   # packaged distribution zip where it can be used to quickly determine version
   # info.
-  bazel_label="$(\
-    (grep '^build.label=' build-data.properties | cut -d'=' -f2- | tr -d '\n') \
-        || echo -n 'no_version')"
-  echo -n "${bazel_label:-no_version}" > "${PACKAGE_DIR}/build-label.txt"
-  # echo -n "5.2.0.p1.m10.13.6x10.1" > "${PACKAGE_DIR}/build-label.txt"
+  # bazel_label="$(\
+  #   (grep '^build.label=' build-data.properties | cut -d'=' -f2- | tr -d '\n') \
+  #       || echo -n 'no_version')"
+  # echo -n "${bazel_label:-no_version}" > "${PACKAGE_DIR}/build-label.txt"
+  echo -n "5.2.0.p1.m10.13.6x10.1.dev" > "${PACKAGE_DIR}/build-label.txt"
 
   cd $WORKDIR
 
