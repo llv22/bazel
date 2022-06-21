@@ -68,6 +68,7 @@ import com.google.devtools.build.lib.vfs.PathFragment;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 import javax.annotation.Nullable;
 import net.starlark.java.eval.EvalException;
 import net.starlark.java.eval.Sequence;
@@ -289,12 +290,22 @@ public final class CppLinkAction extends AbstractAction implements CommandAction
     return new CppLinkActionContinuation(actionExecutionContext, spawnContinuation);
   }
 
+  static int upperBoundaryOfArguments = 262144;
+
   private Spawn createSpawn(ActionExecutionContext actionExecutionContext)
       throws ActionExecutionException {
     try {
-      System.err.printf("[bazel:src/main/java/com/google/devtools/build/lib/rules/cpp/CppLinkAction.java] command line: %s, inputs: %s, outputs: %s, os: %s, tools: %s \n", ImmutableList.copyOf(getCommandLine(actionExecutionContext.getArtifactExpander())), getInputs(), getOutputs(), OS.getCurrent(), estimateResourceConsumptionLocal(
+      ImmutableList<String> commandLine = ImmutableList.copyOf(getCommandLine(actionExecutionContext.getArtifactExpander()));
+      System.err.printf("[bazel:src/main/java/com/google/devtools/build/lib/rules/cpp/CppLinkAction.java] command line: %s, inputs: %s, outputs: %s, os: %s, tools: %s \n", commandLine, getInputs(), getOutputs(), OS.getCurrent(), estimateResourceConsumptionLocal(
               OS.getCurrent(),
               getLinkCommandLine().getLinkerInputArtifacts().memoizedFlattenAndGetSize()));
+      if (OS.getCurrent() == OS.DARWIN && OS.getVersion() == "10.13.6") {
+        //see: only crack for macOS 10.13.6
+        String arguments = commandLine.parallelStream().collect(Collectors.joining(" "));
+        if (arguments.getBytes().length > upperBoundaryOfArguments) {
+          System.err.printf("need to split arguments to avoid the issue of \"error=7, Argument list too long\" on macOS 10.13.6");
+        }
+      }
       return new SimpleSpawn(
           this,
           ImmutableList.copyOf(getCommandLine(actionExecutionContext.getArtifactExpander())),
