@@ -299,11 +299,13 @@ public final class CppLinkAction extends AbstractAction implements CommandAction
       System.err.printf("[bazel:src/main/java/com/google/devtools/build/lib/rules/cpp/CppLinkAction.java] command line: %s, inputs: %s, outputs: %s, os: %s, tools: %s \n", commandLine, getInputs(), getOutputs(), OS.getCurrent(), estimateResourceConsumptionLocal(
               OS.getCurrent(),
               getLinkCommandLine().getLinkerInputArtifacts().memoizedFlattenAndGetSize()));
-      if (OS.getCurrent() == OS.DARWIN && OS.getVersion().equals("10.13.6")) {
+//      if (OS.getCurrent() == OS.DARWIN && OS.getVersion().equals("10.13.6")) {
+        if (OS.getCurrent() == OS.DARWIN) {
         //see: only crack for macOS 10.13.6
         String arguments = commandLine.parallelStream().collect(Collectors.joining(" "));
         if (arguments.getBytes().length > upperBoundaryOfArguments) {
           System.err.printf("need to split arguments to avoid the issue of \"error=7, Argument list too long\" on macOS 10.13.6\n");
+
         }
       }
       return new SimpleSpawn(
