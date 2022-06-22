@@ -366,6 +366,8 @@ public final class CppLinkAction extends AbstractAction implements CommandAction
           final List<String> unSupportedPostfixes = postfixToObjectFileMap.keySet().stream().filter(
                   postfix -> !postfix.equals(".o") && !postfix.equals(".lo") && !postfix.equals(".a"))
               .collect(Collectors.toList());
+          //TODO: only determine the .lo, .o and .a's location and skip them options
+          //TODO: removing duplicate command line's argument will be a easy task
           if (unSupportedPostfixes.size() > 0) {
             String message = String.format(
                 "[bazel:CppLinkAction Error] can't support to incrementally link files with postfixes %s",
@@ -374,28 +376,27 @@ public final class CppLinkAction extends AbstractAction implements CommandAction
                 Code.COMMAND_GENERATION_FAILURE);
             throw new ActionExecutionException(message, this, false, code);
           }
+          final int collectedSize = 200;
+          final Map<String, List<String>> intermediateToSubLibraries = new HashMap<>();
           final ProcessBuilder processBuilder = new ProcessBuilder();
           for (Map.Entry<String, List<ObjectFile>> set : postfixToObjectFileMap.entrySet()) {
             final String postfix = set.getKey();
             final List<ObjectFile> files = set.getValue();
             System.err.printf("%s with files size: %s \n", postfix, files.size());
-          }
-          final int collectedSize = 200;
-          final Map<String, List<String>> intermediateToSubLibraries = new HashMap<>();
-          for (int i = indexOfOutputLibrary + 1, s = 0; i < commandLine.size(); ) {
-            final List<String> intermediate = new ArrayList();
-            for (int j = 0; j < collectedSize && i < commandLine.size(); j++) {
-              intermediate.add(commandLine.get(i));
-            }
-            final String intermediateOutputFile =
-                dirPathOfOutputFile + String.format(intermediateFileNameTemplate, s++);
-            intermediateToSubLibraries.put(intermediateFilePath + intermediateOutputFile,
-                intermediate);
-            final List<String> commands = Lists.newArrayList("/usr/bin/ld", "-r");
-            commands.addAll(intermediate);
-            commands.add("-o");
-            commands.add(intermediateOutputFile);
-            System.err.println(commands);
+            for (int i = indexOfOutputLibrary + 1, s = 0; i < commandLine.size(); ) {
+              final List<String> intermediate = new ArrayList();
+              for (int j = 0; j < collectedSize && i < commandLine.size(); j++) {
+                intermediate.add(commandLine.get(i));
+              }
+              final String intermediateOutputFile =
+                  dirPathOfOutputFile + String.format(intermediateFileNameTemplate, s++);
+              intermediateToSubLibraries.put(intermediateFilePath + intermediateOutputFile,
+                  intermediate);
+              final List<String> commands = Lists.newArrayList("/usr/bin/ld", "-r");
+              commands.addAll(intermediate);
+              commands.add("-o");
+              commands.add(intermediateOutputFile);
+              System.err.println(commands);
             /*
             final Process process = processBuilder.command(commands);
             process.start();
@@ -407,6 +408,7 @@ public final class CppLinkAction extends AbstractAction implements CommandAction
               throw new ActionExecutionException(message, this, false, code);
             }
             */
+            }
           }
           //see: refine for simpleSpawn for intermediate files
           final List<String> refinedCommands = new ArrayList<>(
