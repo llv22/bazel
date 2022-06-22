@@ -805,7 +805,7 @@ public abstract class CcBinary implements RuleConfiguredTargetFactory {
         currentCcLinkingContextBuilder.addLibrary(ccLinkingOutputs.getLibraryToLink());
       }
       ccCompilationOutputsWithOnlyObjects = CcCompilationOutputs.builder().build();
-      System.err.printf("[bazel:src/main/java/com/google/devtools/build/lib/rules/cpp/CcBinary.java] ccCompilationOutputsWithOnlyObjects direct list via ccLinkingOutputs: %s\n",  ccCompilationOutputsWithOnlyObjects.getObjectFiles(true));
+//      System.err.printf("[bazel:src/main/java/com/google/devtools/build/lib/rules/cpp/CcBinary.java] ccCompilationOutputsWithOnlyObjects direct list via ccLinkingOutputs: %s\n",  ccCompilationOutputsWithOnlyObjects.getObjectFiles(true));
     }
 
     // Determine the libraries to link in.
@@ -845,7 +845,7 @@ public abstract class CcBinary implements RuleConfiguredTargetFactory {
 
     final ImmutableList<LibraryToLink> libraries = precompiledLibraries.build();
     currentCcLinkingContextBuilder.addLibraries(libraries);
-    System.err.printf("[bazel:src/main/java/com/google/devtools/build/lib/rules/cpp/CcBinary.java] precompiledLibraries list : %s\n",  libraries);
+//    System.err.printf("[bazel:src/main/java/com/google/devtools/build/lib/rules/cpp/CcBinary.java] precompiledLibraries list : %s\n",  libraries);
 
     ImmutableList.Builder<String> userLinkflags = ImmutableList.builder();
     userLinkflags.addAll(common.getLinkopts());
@@ -864,7 +864,7 @@ public abstract class CcBinary implements RuleConfiguredTargetFactory {
                     .setCcLinkingContext(currentCcLinkingContextBuilder.build())
                     .build(),
                 depsCcInfo));
-    System.err.printf("[bazel:src/main/java/com/google/devtools/build/lib/rules/cpp/CcBinary.java] ccInfoWithoutExtraLinkTimeLibraries list : %s\n",  ccInfoWithoutExtraLinkTimeLibraries.getCcLinkingContext().getLibraries());
+//    System.err.printf("[bazel:src/main/java/com/google/devtools/build/lib/rules/cpp/CcBinary.java] ccInfoWithoutExtraLinkTimeLibraries list : %s\n",  ccInfoWithoutExtraLinkTimeLibraries.getCcLinkingContext().getLibraries());
 
     CcInfo extraLinkTimeLibrariesCcInfo =
         CcInfo.builder()
@@ -874,12 +874,12 @@ public abstract class CcBinary implements RuleConfiguredTargetFactory {
                     .addTransitiveLinkerInputs(extraLinkTimeLibraries)
                     .build())
             .build();
-    System.err.printf("[bazel:src/main/java/com/google/devtools/build/lib/rules/cpp/CcBinary.java] extraLinkTimeLibrariesCcInfo list : %s\n",  extraLinkTimeLibrariesCcInfo.getCcLinkingContext().getLibraries());
+//    System.err.printf("[bazel:src/main/java/com/google/devtools/build/lib/rules/cpp/CcBinary.java] extraLinkTimeLibrariesCcInfo list : %s\n",  extraLinkTimeLibrariesCcInfo.getCcLinkingContext().getLibraries());
 
     CcInfo ccInfo =
         CcInfo.merge(
             ImmutableList.of(ccInfoWithoutExtraLinkTimeLibraries, extraLinkTimeLibrariesCcInfo));
-    System.err.printf("[bazel:src/main/java/com/google/devtools/build/lib/rules/cpp/CcBinary.java] ccInfo after merging with ccInfoWithoutExtraLinkTimeLibraries and extraLinkTimeLibrariesCcInfo list : %s\n",  ccInfo.getCcLinkingContext().getLibraries());
+//    System.err.printf("[bazel:src/main/java/com/google/devtools/build/lib/rules/cpp/CcBinary.java] ccInfo after merging with ccInfoWithoutExtraLinkTimeLibraries and extraLinkTimeLibrariesCcInfo list : %s\n",  ccInfo.getCcLinkingContext().getLibraries());
 
     CcLinkingContext ccLinkingContext =
         ruleContext.attributes().isAttributeValueExplicitlySpecified("dynamic_deps")

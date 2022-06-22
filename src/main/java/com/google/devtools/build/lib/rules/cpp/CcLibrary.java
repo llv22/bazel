@@ -276,7 +276,7 @@ public abstract class CcLibrary implements RuleConfiguredTargetFactory {
                 ruleContext.getConfiguration(),
                 LinkTargetType.INTERFACE_DYNAMIC_LIBRARY));
       }
-      System.err.printf("[bazel:src/main/java/com/google/devtools/build/lib/rules/cpp/CcLibrary.java - !createDynamicLibrary && !supportsDynamicLinker] dynamicLibraries.build(): %s\n",  dynamicLibraries.build());
+//      System.err.printf("[bazel:src/main/java/com/google/devtools/build/lib/rules/cpp/CcLibrary.java - !createDynamicLibrary && !supportsDynamicLinker] dynamicLibraries.build(): %s\n",  dynamicLibraries.build());
       ruleContext.registerAction(
           new FailAction(
               ruleContext.getActionOwner(),
@@ -307,7 +307,7 @@ public abstract class CcLibrary implements RuleConfiguredTargetFactory {
                 ruleContext.getConfiguration(),
                 LinkTargetType.INTERFACE_DYNAMIC_LIBRARY));
       }
-      System.err.printf("[bazel:src/main/java/com/google/devtools/build/lib/rules/cpp/CcLibrary.java - !createDynamicLibrary && srcs] dynamicLibraries.build(): %s\n",  dynamicLibraries.build());
+//      System.err.printf("[bazel:src/main/java/com/google/devtools/build/lib/rules/cpp/CcLibrary.java - !createDynamicLibrary && srcs] dynamicLibraries.build(): %s\n",  dynamicLibraries.build());
       ruleContext.registerAction(
           new FailAction(
               ruleContext.getActionOwner(),
@@ -318,13 +318,13 @@ public abstract class CcLibrary implements RuleConfiguredTargetFactory {
     }
 
     CompilationInfo compilationInfo = compilationHelper.compile(ruleContext);
-    System.err.printf("[bazel:src/main/java/com/google/devtools/build/lib/rules/cpp/CcLibrary.java] compilationInfo list: %s\n",  compilationInfo.getCcCompilationOutputs().getObjectFiles(true));
+//    System.err.printf("[bazel:src/main/java/com/google/devtools/build/lib/rules/cpp/CcLibrary.java] compilationInfo list: %s\n",  compilationInfo.getCcCompilationOutputs().getObjectFiles(true));
     CcCompilationOutputs precompiledFilesObjects =
         CcCompilationOutputs.builder()
             .addObjectFiles(precompiledFiles.getObjectFiles(/* usePic= */ true))
             .addPicObjectFiles(precompiledFiles.getObjectFiles(/* usePic= */ true))
             .build();
-    System.err.printf("[bazel:src/main/java/com/google/devtools/build/lib/rules/cpp/CcLibrary.java] precompiledFilesObjects list: %s\n",  precompiledFiles.getObjectFiles(true));
+//    System.err.printf("[bazel:src/main/java/com/google/devtools/build/lib/rules/cpp/CcLibrary.java] precompiledFilesObjects list: %s\n",  precompiledFiles.getObjectFiles(true));
     CcCompilationOutputs ccCompilationOutputs =
         CcCompilationOutputs.builder()
             .merge(precompiledFilesObjects)
@@ -395,7 +395,7 @@ public abstract class CcLibrary implements RuleConfiguredTargetFactory {
             ccLinkingOutputs.getLibraryToLink(),
             precompiledLibraries,
             ccCompilationOutputs.isEmpty());
-    System.err.printf("[bazel:src/main/java/com/google/devtools/build/lib/rules/cpp/CcLibrary.java] libraryToLinks list : %s\n",  libraryToLinks);
+//    System.err.printf("[bazel:src/main/java/com/google/devtools/build/lib/rules/cpp/CcLibrary.java] libraryToLinks list : %s\n",  libraryToLinks);
 
     CcLinkingContext ccLinkingContext =
         linkingHelper.buildCcLinkingContextFromLibrariesToLink(
@@ -403,7 +403,7 @@ public abstract class CcLibrary implements RuleConfiguredTargetFactory {
             compilationInfo.getCcCompilationContext());
     CcNativeLibraryInfo ccNativeLibraryInfo =
         CppHelper.collectNativeCcLibraries(ruleContext.getPrerequisites("deps"), libraryToLinks);
-    System.err.printf("[bazel:src/main/java/com/google/devtools/build/lib/rules/cpp/CcLibrary.java] deps ccNativeLibraryInfo list : %s\n",  ccNativeLibraryInfo.getTransitiveCcNativeLibraries());
+//    System.err.printf("[bazel:src/main/java/com/google/devtools/build/lib/rules/cpp/CcLibrary.java] deps ccNativeLibraryInfo list : %s\n",  ccNativeLibraryInfo.getTransitiveCcNativeLibraries());
 
     /*
      * We always generate a static library, even if there aren't any source files.
