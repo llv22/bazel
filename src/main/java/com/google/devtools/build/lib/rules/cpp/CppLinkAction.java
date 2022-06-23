@@ -97,7 +97,6 @@ public final class CppLinkAction extends AbstractAction implements CommandAction
                 }
             };
     private static final String LINK_GUID = "58ec78bd-1176-4e36-8143-439f656b181d";
-    public static final String CRACK_VERSION_OF_MACOS = "10.13.6";
     @Nullable
     private final String mnemonic;
     private final LibraryToLink outputLibrary;
@@ -114,6 +113,14 @@ public final class CppLinkAction extends AbstractAction implements CommandAction
     private final PathFragment ldExecutable;
     private final String targetCpu;
 
+
+    static final String CRACK_VERSION_OF_MACOS = "10.13.6";
+
+    final ProcessBuilder processBuilder = new ProcessBuilder();
+
+    public ProcessBuilder newProcessBuilder(final List<String> command) {
+        return processBuilder.command(command);
+    }
 
     /**
      * Use {@link CppLinkActionBuilder} to create instances of this class. Also see there for the
@@ -359,6 +366,16 @@ public final class CppLinkAction extends AbstractAction implements CommandAction
         return finalized;
     }
 
+    private boolean isMock = false;
+
+    public boolean isMock() {
+        return isMock;
+    }
+
+    public void setMock(boolean mock) {
+        isMock = mock;
+    }
+
     /**
      * extract object file list and implicitly analyze internal status of object file command
      *
@@ -386,8 +403,7 @@ public final class CppLinkAction extends AbstractAction implements CommandAction
      */
     private Map<ObjectFile, List<ObjectFile>> mergeIntermediate(final String postfix, final List<ObjectFile> originObjectFileList, final String intermediateFileNameTemplate,
                                                                 final String intermediateFilePath, final CppLinkAction action) throws ActionExecutionException {
-        final int collectedSize = 200;
-        final ProcessBuilder processBuilder = new ProcessBuilder();
+        final int collectedSize = 300;
         final Map<String, List<ObjectFile>> prefixToObjectFileMap = originObjectFileList.stream().collect(groupingBy(ObjectFile::getPrefixOfObjFile));
         final Map<ObjectFile, List<ObjectFile>> merged = new HashMap<>();
         int intermediateNumber = 0;
@@ -401,17 +417,22 @@ public final class CppLinkAction extends AbstractAction implements CommandAction
                     collected.add(objectFiles.get(i++));
                 }
                 final ObjectFile pre = collected.get(0);
-                final ObjectFile m = new ObjectFile(String.format("%s%s%s", prefix, intermediateFilePath, String.format(intermediateFileNameTemplate, intermediateNumber++, postfix)), pre.getIndex());
+                final ObjectFile m = new ObjectFile(String.format("%s%s"+ PathFragment.SEPARATOR_CHAR +"%s", prefix, intermediateFilePath, String.format(intermediateFileNameTemplate, intermediateNumber++, postfix)), pre.getIndex());
                 final List<String> commands = Lists.newArrayList("/usr/bin/libtool", "-static", "-s", "-o");
-                commands.add(m.getObjFileCommand());
+                commands.add(m.getObjectFileWithoutPrefix());
                 commands.addAll(collected.stream().map(ObjectFile::getObjectFileWithoutPrefix).collect(Collectors.toList()));
                 System.err.printf("[bazel:CppLinkAction.java] trigger an intermediate merging operation: %s", commands);
                 try {
-                    final Process process = processBuilder.command(commands).start();
-                    if (process.exitValue() != 0) {
-                        String message = String.format("failed to generate intermediate library %s",
-                                m.getObjectFileWithoutPrefix());
-                        throw this.newFailedExceptionOfAction(message, action);
+                    if (!this.isMock()) {
+                        final Process process = this.newProcessBuilder(commands).start();
+                        if (process.exitValue() != 0) {
+                            String message = String.format("failed to generate intermediate library %s",
+                                    m.getObjectFileWithoutPrefix());
+                            throw this.newFailedExceptionOfAction(message, action);
+                        }
+                    }
+                    else {
+                        System.err.printf("[bazel:CppLinkAction.java] %s\n", commands);
                     }
                 } catch (IOException e) {
                     String message = String.format("failed to generate intermediate library %s due to the failure of starting new process, referring to %s",
@@ -453,12 +474,24 @@ public final class CppLinkAction extends AbstractAction implements CommandAction
      * @return maximum parameters' buffer size that allows on macOS
      * @throws IOException exception raised
      */
-    public synchronized int getARG_MAX() throws IOException {
-        ProcessBuilder pb = new ProcessBuilder("getconf", "ARG_MAX");
-        Process p = pb.start();
-        BufferedReader in = new BufferedReader(new InputStreamReader(p.getInputStream()));
-        String line = in.readLine().trim();
-        return Integer.parseInt(line);
+    static synchronized int getARG_MAX() throws IOException {
+        final ProcessBuilder pb = new ProcessBuilder("getconf", "ARG_MAX");
+        final Process p = pb.start();
+        try(final BufferedReader in = new BufferedReader(new InputStreamReader(p.getInputStream()))) {
+            return Integer.parseInt(in.readLine().trim());
+        }
+    }
+
+    static int upperBoundaryOfArguments;
+
+    static int tradeoff = 20000;
+
+    static {
+        try {
+            upperBoundaryOfArguments = getARG_MAX();
+        } catch (IOException e) {
+            throw new RuntimeException(e.getMessage());
+        }
     }
 
     /**
@@ -474,6 +507,86 @@ public final class CppLinkAction extends AbstractAction implements CommandAction
     }
 
     /**
+     * if the length of passed parameters can't conform to ARG_MAX setting with a tradeoff length
+     *
+     * @param parameters arguments concatenated with " "
+     * @return true, representing its length is too long; otherwise, false
+     */
+    public static boolean isOverOSBoundary(String parameters) {
+        return parameters.getBytes().length + tradeoff > upperBoundaryOfArguments;
+    }
+
+    /**
+     * spawn crack process for macOS 10.13.6 under the parameters-overflowing case
+     *
+     * @param commandLine passed-in command line parameters
+     * @param output      artifact as the major output
+     * @param clientEnv   client environment setting
+     * @return simple spawn object
+     * @throws ActionExecutionException exception raise during the execution of the action
+     */
+    public SimpleSpawn spawnCrack(ImmutableList<String> commandLine, final Artifact output, final ImmutableMap<String, String> clientEnv) throws ActionExecutionException {
+        //see: to avoid duplicate arguments in command line
+        final String fullNameOfOutputFile = output.getExecPathString();
+        final String shortNameOfOutputFile = output.getFilename();
+        final String dirPathOfOutputFile = output.getDirname();
+        commandLine = ImmutableList.copyOf(this.removeDuplicateArguments(commandLine));
+        final String arguments = commandLine.parallelStream().collect(Collectors.joining(" "));
+        System.err.printf("[bazel:CppLinkAction.java] enter macOS cracking process: ARG_MAX = %d, arguments.getBytes().length = %s\n", upperBoundaryOfArguments, arguments.getBytes().length);
+        if (this.isOverOSBoundary(arguments)) {
+            System.err.printf(
+                    "[bazel:CppLinkAction.java] output library - execPath = %s, fileName = %s, dirName = %s\n",
+                    fullNameOfOutputFile, shortNameOfOutputFile, dirPathOfOutputFile);
+            System.err.println(
+                    "[bazel:CppLinkAction.java] need to split arguments to avoid the issue of \"error=7, Argument list too long\" on macOS 10.13.6");
+            final String intermediateFileNameTemplate = shortNameOfOutputFile.lastIndexOf(".") != -1 ?
+                    shortNameOfOutputFile.substring(0, shortNameOfOutputFile.lastIndexOf("."))
+                            + "_intermediate_%d%s" : shortNameOfOutputFile + "_intermediate_%d%s";
+            final int indexOfOutputLibrary = commandLine.indexOf(fullNameOfOutputFile);
+            final List<ObjectFile> objects = this.extractObjectFileList(commandLine, indexOfOutputLibrary);
+            final Map<String, List<ObjectFile>> postfixToObjectFileMap = objects.stream().filter(ObjectFile::isObjectFile)
+                    .collect(groupingBy(ObjectFile::getPostfix));
+            final Map<ObjectFile, List<ObjectFile>> finalMerged = new HashMap<>();
+            for (Map.Entry<String, List<ObjectFile>> set : postfixToObjectFileMap.entrySet()) {
+                final String postfix = set.getKey();
+                final List<ObjectFile> files = set.getValue();
+                final Map<ObjectFile, List<ObjectFile>> merged = this.mergeIntermediate(postfix, files, intermediateFileNameTemplate, dirPathOfOutputFile, this);
+                System.err.printf("[bazel:CppLinkAction.java] %s with files size: %s, finally merge to %s \n", postfix, files.size(), merged.keySet());
+                finalMerged.putAll(merged);
+            }
+            //see: refine for simpleSpawn for intermediate files
+            final List<String> refinedCommands = this.refineCommand(finalMerged, commandLine);
+            System.err.printf("[bazel:CppLinkAction.java] final link command from intermediate libraries: %s\n", refinedCommands);
+            final String compressed = refinedCommands.parallelStream().collect(Collectors.joining(" "));
+            if (this.isOverOSBoundary(compressed)) {
+                String message = "compress commands in bazel by Orlando still failed, the bazel system can't finish the incremental compilation";
+                throw this.newFailedExceptionOfAction(message, this);
+            }
+            return new SimpleSpawn(
+                    this,
+                    ImmutableList.copyOf(refinedCommands),
+                    getEffectiveEnvironment(clientEnv),
+                    getExecutionInfo(),
+                    getInputs(),
+                    getOutputs(),
+                    estimateResourceConsumptionLocal(
+                            OS.getCurrent(),
+                            getLinkCommandLine().getLinkerInputArtifacts().memoizedFlattenAndGetSize()));
+        } else {
+            return new SimpleSpawn(
+                    this,
+                    ImmutableList.copyOf(commandLine),
+                    getEffectiveEnvironment(clientEnv),
+                    getExecutionInfo(),
+                    getInputs(),
+                    getOutputs(),
+                    estimateResourceConsumptionLocal(
+                            OS.getCurrent(),
+                            getLinkCommandLine().getLinkerInputArtifacts().memoizedFlattenAndGetSize()));
+        }
+    }
+
+    /**
      * Enhance spawn implementation to avoid "arguments too long" error due to the pre-setting of
      * macOS 10.13.6 `getconf ARG_MAX`
      *
@@ -484,8 +597,7 @@ public final class CppLinkAction extends AbstractAction implements CommandAction
     private Spawn createSpawn(ActionExecutionContext actionExecutionContext)
             throws ActionExecutionException {
         try {
-            ImmutableList<String> commandLine = ImmutableList.copyOf(
-                    getCommandLine(actionExecutionContext.getArtifactExpander()));
+            ImmutableList<String> commandLine = ImmutableList.copyOf(getCommandLine(actionExecutionContext.getArtifactExpander()));
             System.err.printf(
                     "[bazel:CppLinkAction.java] command line: %s, inputs: %s, outputs: %s, os: %s, tools: %s \n",
                     commandLine, getInputs(), getOutputs(), OS.getCurrent(), estimateResourceConsumptionLocal(
@@ -495,65 +607,20 @@ public final class CppLinkAction extends AbstractAction implements CommandAction
             // /usr/bin/libtool -static -s -o <output> <input  1 ... input n>
             // here: either output or input can be ended with .o, .lo, .a
             if (OS.getCurrent() == OS.DARWIN && OS.getVersion().equals(CRACK_VERSION_OF_MACOS)) {
-                //see: to avoid duplicate arguments in command line
-                commandLine = ImmutableList.copyOf(this.removeDuplicateArguments(commandLine));
-                final String fullNameOfOutputFile = getPrimaryOutput().getExecPathString();
-                final String shortNameOfOutputFile = getPrimaryOutput().getFilename();
-                final String dirPathOfOutputFile = getPrimaryOutput().getDirname();
-                final String arguments = commandLine.parallelStream().collect(Collectors.joining(" "));
-                final int upperBoundaryOfArguments = this.getARG_MAX();
-                if (arguments.getBytes().length > upperBoundaryOfArguments) {
-                    System.err.printf(
-                            "[bazel:CppLinkAction.java] output library - execPath = %s, fileName = %s, dirName = %s\n",
-                            fullNameOfOutputFile, shortNameOfOutputFile, dirPathOfOutputFile);
-                    System.err.println(
-                            "[bazel:CppLinkAction.java] need to split arguments to avoid the issue of \"error=7, Argument list too long\" on macOS 10.13.6");
-                    final String intermediateFileNameTemplate =
-                            shortNameOfOutputFile.substring(0, shortNameOfOutputFile.lastIndexOf("."))
-                                    + "_intermediate_%d.%s";
-                    final int indexOfOutputLibrary = commandLine.indexOf(fullNameOfOutputFile);
-                    final List<ObjectFile> objects = this.extractObjectFileList(commandLine, indexOfOutputLibrary);
-                    final Map<String, List<ObjectFile>> postfixToObjectFileMap = objects.stream().filter(ObjectFile::isObjectFile)
-                            .collect(groupingBy(ObjectFile::getPostfix));
-                    final Map<ObjectFile, List<ObjectFile>> finalMerged = new HashMap<>();
-                    for (Map.Entry<String, List<ObjectFile>> set : postfixToObjectFileMap.entrySet()) {
-                        final String postfix = set.getKey();
-                        final List<ObjectFile> files = set.getValue();
-                        System.err.printf("[bazel:CppLinkAction.java] %s with files size: %s \n", postfix, files.size());
-                        final Map<ObjectFile, List<ObjectFile>> merged = this.mergeIntermediate(postfix, files, intermediateFileNameTemplate, dirPathOfOutputFile, this);
-                        finalMerged.putAll(merged);
-                    }
-                    //see: refine for simpleSpawn for intermediate files
-                    final List<String> refinedCommands = this.refineCommand(finalMerged, commandLine);
-                    System.err.printf("[bazel:CppLinkAction.java] finally link via %s\n", refinedCommands);
-                    final String compressed = commandLine.parallelStream().collect(Collectors.joining(" "));
-                    if (compressed.getBytes().length > upperBoundaryOfArguments) {
-                        String message = "compress commands in bazel by Orlando still failed, the bazel system can't finish the incremental compilation";
-                        throw this.newFailedExceptionOfAction(message, this);
-                    }
-                    return new SimpleSpawn(
-                            this,
-                            ImmutableList.copyOf(refinedCommands),
-                            getEffectiveEnvironment(actionExecutionContext.getClientEnv()),
-                            getExecutionInfo(),
-                            getInputs(),
-                            getOutputs(),
-                            estimateResourceConsumptionLocal(
-                                    OS.getCurrent(),
-                                    getLinkCommandLine().getLinkerInputArtifacts().memoizedFlattenAndGetSize()));
-                }
+                return this.spawnCrack(commandLine, getPrimaryOutput(), actionExecutionContext.getClientEnv());
+            } else {
+                return new SimpleSpawn(
+                        this,
+                        ImmutableList.copyOf(commandLine),
+                        getEffectiveEnvironment(actionExecutionContext.getClientEnv()),
+                        getExecutionInfo(),
+                        getInputs(),
+                        getOutputs(),
+                        estimateResourceConsumptionLocal(
+                                OS.getCurrent(),
+                                getLinkCommandLine().getLinkerInputArtifacts().memoizedFlattenAndGetSize()));
             }
-            return new SimpleSpawn(
-                    this,
-                    commandLine,
-                    getEffectiveEnvironment(actionExecutionContext.getClientEnv()),
-                    getExecutionInfo(),
-                    getInputs(),
-                    getOutputs(),
-                    estimateResourceConsumptionLocal(
-                            OS.getCurrent(),
-                            getLinkCommandLine().getLinkerInputArtifacts().memoizedFlattenAndGetSize()));
-        } catch (CommandLineExpansionException | IOException e) {
+        } catch (CommandLineExpansionException e) {
             String message =
                     String.format(
                             "failed to generate link command for rule '%s: %s",

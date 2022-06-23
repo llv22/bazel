@@ -413,6 +413,10 @@ java_test(
 java_test(
     name = "CppLinkActionTest",
     srcs = ["CppLinkActionTest.java"],
+    data = [
+        "CppLinkActionTest.macOScrack.txt",
+        "CppLinkActionTest.tensorflow2.9.txt",
+    ],
     deps = [
         ":CcToolchainTestHelper",
         ":MockCppSemantics",
