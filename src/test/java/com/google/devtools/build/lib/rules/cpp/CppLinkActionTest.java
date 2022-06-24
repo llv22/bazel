@@ -1115,8 +1115,8 @@ public class CppLinkActionTest extends BuildViewTestCase {
             }
         }).collect(Collectors.toList()));
         final ArtifactRoot root =
-                ArtifactRoot.asDerivedRoot(scratch.getFileSystem().getPath("/"), RootType.Output, "hello-world");
-        final Artifact output = Artifact.DerivedArtifact.DerivedArtifact.create(root, PathFragment.create("bazel-out/darwin-fastbuild/bin/main/hello-world"),
+                ArtifactRoot.asDerivedRoot(scratch.getFileSystem().getPath("/private/var/tmp/_bazel_llv23/ab44b062350863c703e5e9f86a983df4/sandbox/darwin-sandbox/1/execroot/__main__"), RootType.Output, PathFragment.create("bazel-out/darwin-fastbuild/bin/main/hello-world"));
+        final Artifact output = Artifact.DerivedArtifact.create(root, PathFragment.create("bazel-out/darwin-fastbuild/bin/main/hello-world"),
                 ActionsTestUtil.NULL_ARTIFACT_OWNER);
         final SimpleSpawn spawn = linkAction.spawnCrack(commandLine, output, clientEnv);
         assertNotNull(spawn);
@@ -1162,8 +1162,8 @@ public class CppLinkActionTest extends BuildViewTestCase {
             }
         }).collect(Collectors.toList()));
         final ArtifactRoot root =
-                ArtifactRoot.asDerivedRoot(scratch.getFileSystem().getPath("/"), RootType.Output, "_pywrap_tensorflow_internal.so");
-        final Artifact output = Artifact.DerivedArtifact.DerivedArtifact.create(root, PathFragment.create("bazel-out/host/bin/tensorflow/python/_pywrap_tensorflow_internal.so"),
+                ArtifactRoot.asDerivedRoot(scratch.getFileSystem().getPath("/private/var/tmp/_bazel_llv23/e3c8d084e25ebe0fa52e000754bcd789/execroot/org_tensorflow"), RootType.Output, PathFragment.create("bazel-out/host/bin/tensorflow/python/_pywrap_tensorflow_internal.so"));
+        final Artifact output = Artifact.DerivedArtifact.create(root, PathFragment.create("bazel-out/host/bin/tensorflow/python/_pywrap_tensorflow_internal.so"),
                 ActionsTestUtil.NULL_ARTIFACT_OWNER);
         final SimpleSpawn spawn = linkAction.spawnCrack(commandLine, output, clientEnv);
         assertNotNull(spawn);
