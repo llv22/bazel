@@ -1167,6 +1167,16 @@ public class CppLinkActionTest extends BuildViewTestCase {
                 ActionsTestUtil.NULL_ARTIFACT_OWNER);
         final SimpleSpawn spawn = linkAction.spawnCrack(commandLine, output, clientEnv);
         assertNotNull(spawn);
-        assertFalse(CppLinkAction.isOverOSBoundary(spawn.getArguments().parallelStream().collect(Collectors.joining(" "))));
+        final ImmutableList<String> arguments = spawn.getArguments();
+        assertEquals(3, arguments.stream().filter(s -> s.equals("-Wl,-framework")).count());
+        assertEquals(2, arguments.stream().filter(s -> s.equals("-framework")).count());
+        assertEquals(1, arguments.stream().filter(s -> s.equals("-Wl,CoreFoundation")).count());
+        assertEquals(1, arguments.stream().filter(s -> s.equals("IOKit")).count());
+        assertEquals(1, arguments.stream().filter(s -> s.equals("-pthread")).count());
+        assertEquals(1, arguments.stream().filter(s -> s.equals("-lpthread")).count());
+        assertEquals(1, arguments.stream().filter(s -> s.equals("-ldl")).count());
+        assertEquals(1, arguments.stream().filter(s -> s.equals("-lm")).count());
+        final String refinedCommandLine = arguments.parallelStream().collect(Collectors.joining(" "));
+        assertFalse(CppLinkAction.isOverOSBoundary(refinedCommandLine));
     }
 }

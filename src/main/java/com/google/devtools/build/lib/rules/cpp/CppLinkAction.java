@@ -358,10 +358,20 @@ public final class CppLinkAction extends AbstractAction implements CommandAction
      * @return refined command line without repeating of parameters
      */
     private List<String> removeDuplicateArguments(final ImmutableList<String> origin) {
+        final List<String> reservedCommandOptions = Lists.newArrayList("-Wl,-framework", "-framework");
         final List<String> finalized = new ArrayList<>();
-        for (String command : origin) {
-            if (!finalized.contains(command)) {
+        for (int i = 0; i < origin.size(); i++) {
+            final String command = origin.get(i);
+            if (!finalized.contains(command) && !reservedCommandOptions.contains(command)) {
                 finalized.add(command);
+            }
+            //see: if linked with previous like "-framework CoreFoundation"
+            if (reservedCommandOptions.contains(command)) {
+                if (i + 1 < origin.size()) {
+                    if (!finalized.contains(origin.get(i+1))){
+                        finalized.add(command);
+                    }
+                }
             }
         }
         return finalized;
@@ -451,7 +461,7 @@ public final class CppLinkAction extends AbstractAction implements CommandAction
      *
      * @param finalMerged         the merged object file together with original object files
      * @param originalCommandLine original command line that has already been processed to avoid duplication
-     * @param repoRootPath the repository root location, with which we can verify if the tool in the first parameter of command line is valid or not and add the root folder in case needed
+     * @param repoRootPath        the repository root location, with which we can verify if the tool in the first parameter of command line is valid or not and add the root folder in case needed
      * @return the final link command line for output file based on merged object files
      */
     private List<String> refineCommand(final Map<ObjectFile, List<ObjectFile>> finalMerged, final List<String> originalCommandLine, final String repoRootPath) {
@@ -471,7 +481,6 @@ public final class CppLinkAction extends AbstractAction implements CommandAction
             final String originalTool = refinedCommands.get(0);
             if (!new File(originalTool).exists()) {
                 final String tool = String.format("%s%s", repoRootPath, originalTool);
-//                System.err.printf("[bazel:CppLinkAction.java] refine %s to %s for the relevant tool\n", originalTool, tool);
                 if (new File(tool).exists()) {
                     System.err.printf("[bazel:CppLinkAction.java] update the relevant tool in refinedCommands with %s\n", tool);
                     refinedCommands.set(0, tool);
@@ -612,7 +621,7 @@ public final class CppLinkAction extends AbstractAction implements CommandAction
                             return "NULL_ARTIFACT_OWNER";
                         }
                     };
-            for (final ObjectFile intermediateFile: finalMerged.keySet()) {
+            for (final ObjectFile intermediateFile : finalMerged.keySet()) {
                 final Artifact item = Artifact.DerivedArtifact.create(root, PathFragment.create(intermediateFile.getObjectFileWithoutPrefix()),
                         NULL_ARTIFACT_OWNER);
                 inputSetBuilder.add(item);
