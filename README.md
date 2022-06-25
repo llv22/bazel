@@ -57,13 +57,13 @@ force to change to
 1. add build-data.properties in repository with tagged version
 
 ```bash
-build.label=5.2.0.p1.m10.13.6x10.1
+build.label=5.2.1.m10.13.6x10.1
 ```
 
 2. repackage bazel with the following command
 
 ```bash
-bazel build //src:bazel --embed_label="5.2.0.p1.m10.13.6x10.1" --verbose_failures
+bazel build //src:bazel --embed_label="5.2.1.m10.13.6x10.1" --verbose_failures
 ```
 
 --------------------------------------------------------------------------------
