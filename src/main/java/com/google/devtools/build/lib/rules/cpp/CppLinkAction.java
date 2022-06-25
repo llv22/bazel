@@ -61,6 +61,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import javax.annotation.Nullable;
 
 import com.google.devtools.build.skyframe.SkyFunctionName;
@@ -368,7 +369,7 @@ public final class CppLinkAction extends AbstractAction implements CommandAction
             //see: if linked with previous like "-framework CoreFoundation"
             if (reservedCommandOptions.contains(command)) {
                 if (i + 1 < origin.size()) {
-                    if (!finalized.contains(origin.get(i+1))){
+                    if (!finalized.contains(origin.get(i + 1))) {
                         finalized.add(command);
                     }
                 }
@@ -405,6 +406,7 @@ public final class CppLinkAction extends AbstractAction implements CommandAction
     /**
      * merge intermediate object files and output the merged map
      *
+     * @param shortNameOfOutputFile        outfile short name
      * @param postfix                      .a, .o, or .lo
      * @param originObjectFileList         original object file with the same postfix
      * @param intermediateFileNameTemplate <outputFileName>_intermediate_%d.<postfix>
@@ -412,11 +414,26 @@ public final class CppLinkAction extends AbstractAction implements CommandAction
      * @return map with the key that describes the final merged intermediate object file as well as the value that represents the original object file.
      * Tips: in the return map, the value also includes the previous first command line
      */
-    private Map<ObjectFile, List<ObjectFile>> mergeIntermediate(final String postfix, final List<ObjectFile> originObjectFileList, final String intermediateFileNameTemplate,
+    private Map<ObjectFile, List<ObjectFile>> mergeIntermediate(final String shortNameOfOutputFile, final String postfix, final List<ObjectFile> originObjectFileList, final String intermediateFileNameTemplate,
                                                                 final String intermediateFilePath, final CppLinkAction action, final String repoRootPath) throws ActionExecutionException {
-        final int collectedSize = 300;
-        final Map<String, List<ObjectFile>> prefixToObjectFileMap = originObjectFileList.stream().collect(groupingBy(ObjectFile::getPrefixOfObjFile));
         final Map<ObjectFile, List<ObjectFile>> merged = new HashMap<>();
+        final int nonRefinedObjectNumber = 20;
+        if (postfix.equals(".o") && originObjectFileList.size() < nonRefinedObjectNumber) {
+            return merged;
+        }
+        Stream<ObjectFile> stream = originObjectFileList.stream();
+        if (postfix.equals(".o")) {
+            String shortName = shortNameOfOutputFile;
+            final int lastIndexOfDot = shortNameOfOutputFile.lastIndexOf(".");
+            if (lastIndexOfDot != -1) {
+                shortName = shortName.substring(0, lastIndexOfDot);
+            }
+            final String objectOfOutputFile1 = String.format("%s.o", shortName);
+            final String objectOfOutputFile2 = String.format("%s.pic.o", shortName);
+            stream = stream.filter(s -> !s.getObjFileCommand().endsWith(objectOfOutputFile1) && !s.getObjFileCommand().endsWith(objectOfOutputFile2));
+        }
+        final Map<String, List<ObjectFile>> prefixToObjectFileMap = stream.collect(groupingBy(ObjectFile::getPrefixOfObjFile));
+        final int collectedSize = 300;
         int intermediateNumber = 0;
         for (Map.Entry<String, List<ObjectFile>> entry : prefixToObjectFileMap.entrySet()) {
             final String prefix = entry.getKey();
@@ -590,7 +607,7 @@ public final class CppLinkAction extends AbstractAction implements CommandAction
             for (Map.Entry<String, List<ObjectFile>> set : postfixToObjectFileMap.entrySet()) {
                 final String postfix = set.getKey();
                 final List<ObjectFile> files = set.getValue();
-                final Map<ObjectFile, List<ObjectFile>> merged = this.mergeIntermediate(postfix, files, intermediateFileNameTemplate, dirPathOfOutputFile, this, repoRootPath);
+                final Map<ObjectFile, List<ObjectFile>> merged = this.mergeIntermediate(shortNameOfOutputFile, postfix, files, intermediateFileNameTemplate, dirPathOfOutputFile, this, repoRootPath);
                 System.err.printf("[bazel:CppLinkAction.java] %s with files size: %s, finally merge to %s \n", postfix, files.size(), merged.keySet());
                 finalMerged.putAll(merged);
             }

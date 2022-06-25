@@ -59,7 +59,7 @@ if [[ $DEV_BUILD -eq 0 ]]; then
   #   (grep '^build.label=' build-data.properties | cut -d'=' -f2- | tr -d '\n') \
   #       || echo -n 'no_version')"
   # echo -n "${bazel_label:-no_version}" > "${PACKAGE_DIR}/build-label.txt"
-  echo -n "5.2.0.p1.m10.13.6x10.1.dev" > "${PACKAGE_DIR}/build-label.txt"
+  echo -n "5.2.1.m10.13.6x10.1" > "${PACKAGE_DIR}/build-label.txt"
 
   cd $WORKDIR
 
